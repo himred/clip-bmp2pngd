@@ -40,7 +40,7 @@ marker string, so `start` / `status` / `stop` work reliably without PID files.
 | `coreutils` | `sha256sum` | Detect clipboard changes |
 | `wl-clipboard` | `wl-paste` / `wl-copy` | Read/write the WSLg (Wayland) clipboard |
 
-### Install
+### Dependencies installation
 
 **Debian / Ubuntu / WSL**
 ```bash
@@ -57,7 +57,7 @@ sudo dnf install ImageMagick coreutils wl-clipboard
 sudo pacman -S imagemagick coreutils wl-clipboard
 ```
 
-## Installation
+## Script installation
 
 Drop the script somewhere on your `PATH` and make it executable:
 
