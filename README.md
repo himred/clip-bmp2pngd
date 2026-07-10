@@ -1,4 +1,4 @@
-# clip-bmp2png
+# clip-bmp2pngd
 
 A small background daemon that watches the WSLg (Wayland) clipboard and
 re-encodes clipboard images from **BMP** back to **PNG**.
