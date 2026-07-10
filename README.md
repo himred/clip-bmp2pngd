@@ -13,7 +13,7 @@ on the clipboard as **BMP**. WSLg mirrors that clipboard into the Linux
 (Wayland) side, but Claude Code doesn't recognize the `image/bmp` type when you
 paste — so the screenshot never comes through.
 
-`clip-bmp2png` fixes this transparently: it detects when a BMP image lands on
+`clip-bmp2pngd` fixes this transparently: it detects when a BMP image lands on
 the clipboard, converts it to PNG, and writes the PNG back to the clipboard.
 Now pasting into Claude Code (or anything else that expects PNG) just works.
 
@@ -62,16 +62,16 @@ sudo pacman -S imagemagick coreutils wl-clipboard
 Drop the script somewhere on your `PATH` and make it executable:
 
 ```bash
-install -m 755 clip-bmp2png ~/bin/clip-bmp2png
+install -m 755 clip-bmp2pngd ~/bin/clip-bmp2pngd
 ```
 
 ## Usage
 
 ```bash
-clip-bmp2png            # start in daemon mode (default)
-clip-bmp2png start      # same as above
-clip-bmp2png status     # report whether the daemon is running
-clip-bmp2png stop       # stop the daemon
+clip-bmp2pngd            # start in daemon mode (default)
+clip-bmp2pngd start      # same as above
+clip-bmp2pngd status     # report whether the daemon is running
+clip-bmp2pngd stop       # stop the daemon
 ```
 
 ### Start it automatically
@@ -80,7 +80,7 @@ To have it running whenever your WSL shell starts, add this to your
 `~/.bashrc` (or `~/.zshrc`):
 
 ```bash
-clip-bmp2png start >/dev/null 2>&1
+clip-bmp2pngd start >/dev/null 2>&1
 ```
 
 The `start` command is idempotent — if the daemon is already running it just
