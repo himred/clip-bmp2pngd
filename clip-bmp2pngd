@@ -1,0 +1,104 @@
+#!/bin/bash
+
+# clip-bmp2pngd — watches the Wayland (WSLg) clipboard and re-converts
+# BMP images back to PNG (works around the WSLg resync that overwrites the format).
+# By Salim Gasmi (salim@gasmi.net)
+#
+# Usage:
+#   clip-bmp2pngd            # start in daemon mode (default)
+#   clip-bmp2pngd start      # same as above
+#   clip-bmp2pngd status     # report whether the daemon is running
+#   clip-bmp2pngd stop       # stop the daemon
+#
+# Dependencies:
+#   - imagemagick   provides `convert`, used to re-encode BMP -> PNG
+#   - coreutils     provides `sha256sum`, used to detect clipboard changes
+#   - wl-clipboard  provides `wl-paste` / `wl-copy` (WSLg/Wayland clipboard)
+#
+# Install (Debian/Ubuntu/WSL):
+#   sudo apt install imagemagick coreutils wl-clipboard
+# Install (Fedora):
+#   sudo dnf install ImageMagick coreutils wl-clipboard
+# Install (Arch):
+#   sudo pacman -S imagemagick coreutils wl-clipboard
+
+SCRIPT_NAME="clip-bmp2pngd"
+MARKER="__CLIP_BMP2PNG_DAEMON__"           # unique marker matched by pgrep
+
+# --- The watch loop (the daemon's actual work) ------------------------------
+run_loop() {
+  local LAST_HASH=""
+  local TMPFILE
+  TMPFILE=$(mktemp)
+  # cleanup on shutdown (stop sends SIGTERM)
+  trap 'rm -f "$TMPFILE"; exit 0' TERM INT EXIT
+
+  while true; do
+    if wl-paste -l 2>/dev/null | grep -q "image/bmp"; then
+      wl-paste --type image/bmp > "$TMPFILE" 2>/dev/null
+      if [ -s "$TMPFILE" ]; then
+        CUR_HASH=$(sha256sum "$TMPFILE" | awk '{print $1}')
+        if [ "$CUR_HASH" != "$LAST_HASH" ]; then
+          LAST_HASH="$CUR_HASH"
+          convert "$TMPFILE" png:- | wl-copy --type image/png
+          sleep 0.3
+          # Re-apply in case WSLg resyncs and overwrites the PNG
+          convert "$TMPFILE" png:- | wl-copy --type image/png
+        fi
+      fi
+    fi
+    sleep 1
+  done
+}
+
+# --- Helpers ----------------------------------------------------------------
+is_running() {
+  # pgrep never includes its own PID -> no false positive
+  pgrep -f "$MARKER" > /dev/null 2>&1
+}
+
+cmd_start() {
+  if is_running; then
+    echo "$SCRIPT_NAME: already running (PID $(pgrep -f "$MARKER" | tr '\n' ' '))"
+    exit 1
+  fi
+  # relaunch this script detached, passing it the marker
+  setsid "$0" "$MARKER" >/dev/null 2>&1 &
+  sleep 0.2
+  if is_running; then
+    echo "$SCRIPT_NAME: started (PID $(pgrep -f "$MARKER"))"
+  else
+    echo "$SCRIPT_NAME: failed to start"
+    exit 1
+  fi
+}
+
+cmd_status() {
+  if is_running; then
+    echo "$SCRIPT_NAME: running (PID $(pgrep -f "$MARKER" | tr '\n' ' '))"
+  else
+    echo "$SCRIPT_NAME: stopped"
+    exit 1
+  fi
+}
+
+cmd_stop() {
+  if ! is_running; then
+    echo "$SCRIPT_NAME: not running"
+    exit 1
+  fi
+  pkill -TERM -f "$MARKER"
+  echo "$SCRIPT_NAME: stop requested"
+}
+
+# --- Dispatch ---------------------------------------------------------------
+case "$1" in
+  "$MARKER")         run_loop ;;          # internal daemon invocation
+  ""|start)          cmd_start ;;
+  status)            cmd_status ;;
+  stop)              cmd_stop ;;
+  *)
+    echo "Usage: $0 {start|status|stop}" >&2
+    exit 2
+    ;;
+esac
